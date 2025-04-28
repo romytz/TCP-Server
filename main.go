@@ -63,9 +63,6 @@ func (s *Server) readLoop(conn net.Conn) {
 			fmt.Println("read error: ", err)
 			continue
 		}
-		// msg := buff[:n]        // Get only the portion of the buffer that was read
-		// fmt.Print(string(msg)) // Convert the received bytes into a string and print the message
-		// conn.Write(buff[:n])
 		msgBuffer = append(msgBuffer, buff[:n]...)
 
 		if buff[n-1] == '\n' {
