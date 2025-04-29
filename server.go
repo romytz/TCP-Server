@@ -64,22 +64,46 @@ func (s *Server) unregisterClient(addr string) {
 	s.mu.Unlock()
 }
 
-func (s *Server) handleMessage(conn net.Conn, msgBuffer []byte, addr string) bool {
-	line := strings.TrimSpace(string(msgBuffer))
-	if line == "/quit" {
-		fmt.Printf("Client requested quit: %s\n", addr)
-		reply := fmt.Sprintf("[Server]: Goodbye, %s!\r\n", conn.RemoteAddr().String())
-		conn.Write([]byte(reply))
-		return true
+func (s *Server) handleQuit(conn net.Conn, addr string) bool {
+	fmt.Printf("Client %s requested quit\n", addr)
+	reply := fmt.Sprintf("[Server]: Goodbye, %s!\r\n", addr)
+	conn.Write([]byte(reply))
+	return true
+}
+
+func (s *Server) handleList(conn net.Conn, addr string) bool {
+	fmt.Printf("Client %s requested list\n", addr)
+	s.mu.Lock()
+	var clientsList []string
+	for clientAddr := range s.clients {
+		clientsList = append(clientsList, clientAddr)
 	}
+	s.mu.Unlock()
+	list := fmt.Sprintf("[Server]: %d clients connected:\r\n%s\r\n", len(clientsList), strings.Join(clientsList, "\r\n"))
+	conn.Write([]byte(list))
+	return false
+}
+
+func (s *Server) handleRegularMessage(conn net.Conn, msgBuffer []byte, addr string) bool {
 	s.msgch <- Message{
-		from:    conn.RemoteAddr().String(),
+		from:    addr,
 		payload: msgBuffer,
 	}
-	reply := fmt.Sprintf("\r\n[Server]: Thank you for your message, %s!\r\n", conn.RemoteAddr().String())
+	reply := fmt.Sprintf("\r\n[Server]: Thank you for your message, %s!\r\n", addr)
 	conn.Write([]byte(reply))
-
 	return false
+}
+
+func (s *Server) handleMessage(conn net.Conn, msgBuffer []byte, addr string) bool {
+	line := strings.TrimSpace(string(msgBuffer))
+	switch line {
+	case "/quit":
+		return s.handleQuit(conn, addr)
+	case "/list":
+		return s.handleList(conn, addr)
+	default:
+		return s.handleRegularMessage(conn, msgBuffer, addr)
+	}
 }
 
 func (s *Server) readLoop(conn net.Conn) {
