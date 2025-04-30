@@ -14,6 +14,7 @@ type Server struct {
 	msgch      chan Message
 	clients    map[string]net.Conn
 	mu         sync.Mutex
+	wg         sync.WaitGroup
 }
 
 func NewServer(listenAddr string) *Server {
@@ -34,7 +35,12 @@ func (s *Server) Start() error {
 	s.ln = ln
 	go s.acceptLoop()
 	<-s.quitch // Block here until the server is told to quit
+
+	fmt.Println("Waiting for all clients to finish...")
+	s.wg.Wait()
+	fmt.Println("All clients finished.")
 	close(s.msgch)
+
 	return nil
 }
 
@@ -47,7 +53,7 @@ func (s *Server) acceptLoop() {
 		}
 
 		fmt.Println("New connection to the server: ", conn.RemoteAddr())
-
+		s.wg.Add(1)
 		go s.readLoop(conn)
 	}
 }
@@ -108,6 +114,7 @@ func (s *Server) handleMessage(conn net.Conn, msgBuffer []byte, addr string) boo
 
 func (s *Server) readLoop(conn net.Conn) {
 	defer conn.Close() // Make sure to close the connection when done
+	defer s.wg.Done()
 
 	addr := conn.RemoteAddr().String()
 	s.registerClient(addr, conn)

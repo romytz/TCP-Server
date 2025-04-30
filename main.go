@@ -16,6 +16,12 @@ func main() {
 
 	go server.handleMessages()
 
+	go func() {
+		fmt.Println("Press ENTER to stop the server")
+		fmt.Scanln()
+		close(server.quitch)
+	}()
+
 	err := server.Start()
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
