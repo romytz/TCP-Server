@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"strings"
@@ -72,7 +73,7 @@ func (s *Server) unregisterClient(addr string) {
 
 func (s *Server) handleQuit(conn net.Conn, addr string) bool {
 	fmt.Printf("Client %s requested quit\n", addr)
-	reply := fmt.Sprintf("[Server]: Goodbye, %s!\r\n", addr)
+	reply := fmt.Sprintf("[Server]: Goodbye, %s!", addr)
 	conn.Write([]byte(reply))
 	return true
 }
@@ -95,13 +96,29 @@ func (s *Server) handleRegularMessage(conn net.Conn, msgBuffer []byte, addr stri
 		from:    addr,
 		payload: msgBuffer,
 	}
-	reply := fmt.Sprintf("\r\n[Server]: Thank you for your message, %s!\r\n", addr)
+	reply := fmt.Sprintf("[Server]: Thank you for your message, %s!\r\n", addr)
 	conn.Write([]byte(reply))
 	return false
 }
 
+func cleanInput(input string) string {
+	var result []rune
+	for _, r := range input {
+		if r == '\b' {
+			if len(result) > 0 {
+				result = result[:len(result)-1]
+			}
+		} else {
+			result = append(result, r)
+		}
+	}
+	return string(result)
+}
+
 func (s *Server) handleMessage(conn net.Conn, msgBuffer []byte, addr string) bool {
-	line := strings.TrimSpace(string(msgBuffer))
+	// line := strings.TrimSpace(string(msgBuffer))
+	line := cleanInput(string(msgBuffer))
+	line = strings.TrimSpace(line)
 	switch line {
 	case "/quit":
 		return s.handleQuit(conn, addr)
@@ -113,31 +130,24 @@ func (s *Server) handleMessage(conn net.Conn, msgBuffer []byte, addr string) boo
 }
 
 func (s *Server) readLoop(conn net.Conn) {
-	defer conn.Close() // Make sure to close the connection when done
+	defer conn.Close()
 	defer s.wg.Done()
 
 	addr := conn.RemoteAddr().String()
 	s.registerClient(addr, conn)
 	fmt.Printf("Client connected: %s\n", addr)
 
-	buff := make([]byte, 2048)
-	var msgBuffer []byte
-	for {
-		n, err := conn.Read(buff)
-		if err != nil {
-			fmt.Println("Read error: ", err)
-			continue
-		}
-		msgBuffer = append(msgBuffer, buff[:n]...)
+	greeting := fmt.Sprintf("[Server]: Welcome %s!\r\n", addr)
+	conn.Write([]byte(greeting))
 
-		if buff[n-1] == '\n' {
-			if s.handleMessage(conn, msgBuffer, addr) {
-				break
-			}
-			msgBuffer = nil
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		line := scanner.Text() // line without '\n'
+		done := s.handleMessage(conn, []byte(line), addr)
+		if done {
+			break
 		}
 	}
-
 	s.unregisterClient(addr)
 	fmt.Printf("Client disconnected: %s\n", addr)
 

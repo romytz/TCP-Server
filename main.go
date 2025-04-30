@@ -7,7 +7,7 @@ import (
 
 func (s *Server) handleMessages() {
 	for msg := range s.msgch {
-		fmt.Printf("Received message from connection (%s): %s", msg.from, string(msg.payload))
+		fmt.Printf("Received message from connection (%s): %s\n", msg.from, string(msg.payload))
 	}
 }
 
