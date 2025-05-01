@@ -1,41 +1,60 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
+	"tcp-server/command"
+	"tcp-server/message"
 )
 
+// Server manages TCP client connections, incoming messages, and command execution.
 type Server struct {
-	listenAddr string
-	ln         net.Listener
-	quitch     chan struct{}
-	msgch      chan Message
-	clients    map[string]net.Conn
-	mu         sync.Mutex
-	wg         sync.WaitGroup
+	listenAddr string                            // Address the server listens on (e.g., ":8080")
+	ln         net.Listener                      // TCP listener
+	quitch     chan struct{}                     // Channel used to signal server shutdown
+	msgch      chan message.Message              // Channel for broadcasting messages
+	clients    map[string]*Client                // Active clients mapped by address
+	mu         sync.Mutex                        // Mutex to protect shared state (clients map)
+	wg         sync.WaitGroup                    // WaitGroup to track active client goroutines
+	commands   map[string]command.CommandHandler // Registered command handlers
 }
 
+// NewServer creates and initializes a new Server instance.
 func NewServer(listenAddr string) *Server {
-	return &Server{
+	s := &Server{
 		listenAddr: listenAddr,
 		quitch:     make(chan struct{}),
-		msgch:      make(chan Message, 10),
-		clients:    make(map[string]net.Conn),
+		msgch:      make(chan message.Message, 10),
+		clients:    make(map[string]*Client),
+		commands:   make(map[string]command.CommandHandler),
+	}
+	s.initCommands()
+	return s
+}
+
+// initCommands registers supported command handlers for the server.
+func (s *Server) initCommands() {
+	s.commands = map[string]command.CommandHandler{
+		"/list":       &command.ListCommand{},
+		"/quit":       &command.QuitCommand{},
+		"__default__": &command.DefaultMessageCommand{},
 	}
 }
 
+// Start launches the server, listens for incoming TCP connections,
+// and waits for a shutdown signal.
 func (s *Server) Start() error {
-	ln, err := net.Listen("tcp", s.listenAddr) // Start listening for incoming TCP connections
+	ln, err := net.Listen("tcp", s.listenAddr)
 	if err != nil {
 		return err
 	}
-	defer ln.Close() // Ensure listener is closed when Start exits
+	defer ln.Close()
+
 	s.ln = ln
-	go s.acceptLoop()
-	<-s.quitch // Block here until the server is told to quit
+	go s.acceptLoop() // Start accepting client connections in a separate goroutine
+
+	<-s.quitch // Block until shutdown signal is received
 
 	fmt.Println("Waiting for all clients to finish...")
 	s.wg.Wait()
@@ -45,110 +64,18 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) acceptLoop() {
-	for {
-		conn, err := s.ln.Accept()
-		if err != nil {
-			fmt.Println("Accept error: ", err)
-			continue
-		}
-
-		fmt.Println("New connection to the server: ", conn.RemoteAddr())
-		s.wg.Add(1)
-		go s.readLoop(conn)
-	}
-}
-
-func (s *Server) registerClient(addr string, conn net.Conn) {
+// GetClientList returns the names of all currently connected clients.
+func (s *Server) GetClientList() []string {
 	s.mu.Lock()
-	s.clients[addr] = conn
-	s.mu.Unlock()
-}
-
-func (s *Server) unregisterClient(addr string) {
-	s.mu.Lock()
-	delete(s.clients, addr)
-	s.mu.Unlock()
-}
-
-func (s *Server) handleQuit(conn net.Conn, addr string) bool {
-	fmt.Printf("Client %s requested quit\n", addr)
-	reply := fmt.Sprintf("[Server]: Goodbye, %s!", addr)
-	conn.Write([]byte(reply))
-	return true
-}
-
-func (s *Server) handleList(conn net.Conn, addr string) bool {
-	fmt.Printf("Client %s requested list\n", addr)
-	s.mu.Lock()
+	defer s.mu.Unlock()
 	var clientsList []string
-	for clientAddr := range s.clients {
-		clientsList = append(clientsList, clientAddr)
+	for _, client := range s.clients {
+		clientsList = append(clientsList, client.Name)
 	}
-	s.mu.Unlock()
-	list := fmt.Sprintf("[Server]: %d clients connected:\r\n%s\r\n", len(clientsList), strings.Join(clientsList, "\r\n"))
-	conn.Write([]byte(list))
-	return false
+	return clientsList
 }
 
-func (s *Server) handleRegularMessage(conn net.Conn, msgBuffer []byte, addr string) bool {
-	s.msgch <- Message{
-		from:    addr,
-		payload: msgBuffer,
-	}
-	reply := fmt.Sprintf("[Server]: Thank you for your message, %s!\r\n", addr)
-	conn.Write([]byte(reply))
-	return false
-}
-
-func cleanInput(input string) string {
-	var result []rune
-	for _, r := range input {
-		if r == '\b' {
-			if len(result) > 0 {
-				result = result[:len(result)-1]
-			}
-		} else {
-			result = append(result, r)
-		}
-	}
-	return string(result)
-}
-
-func (s *Server) handleMessage(conn net.Conn, msgBuffer []byte, addr string) bool {
-	// line := strings.TrimSpace(string(msgBuffer))
-	line := cleanInput(string(msgBuffer))
-	line = strings.TrimSpace(line)
-	switch line {
-	case "/quit":
-		return s.handleQuit(conn, addr)
-	case "/list":
-		return s.handleList(conn, addr)
-	default:
-		return s.handleRegularMessage(conn, msgBuffer, addr)
-	}
-}
-
-func (s *Server) readLoop(conn net.Conn) {
-	defer conn.Close()
-	defer s.wg.Done()
-
-	addr := conn.RemoteAddr().String()
-	s.registerClient(addr, conn)
-	fmt.Printf("Client connected: %s\n", addr)
-
-	greeting := fmt.Sprintf("[Server]: Welcome %s!\r\n", addr)
-	conn.Write([]byte(greeting))
-
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		line := scanner.Text() // line without '\n'
-		done := s.handleMessage(conn, []byte(line), addr)
-		if done {
-			break
-		}
-	}
-	s.unregisterClient(addr)
-	fmt.Printf("Client disconnected: %s\n", addr)
-
+// Broadcast enqueues a message to be processed by the server's message handler.
+func (s *Server) Broadcast(msg message.Message) {
+	s.msgch <- msg
 }
