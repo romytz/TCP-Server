@@ -6,11 +6,20 @@ This project was built to practice client-server networking concepts and to demo
 
 ## 📦 Project Structure
 
-- `main.go` — Entry point; starts the server and handles shutdown
-- `server.go` — Server logic: listening, accepting connections, reading data
-- `message.go` — Definition of the `Message` struct
+- `main.go` — Entry point; starts the server and handles shutdown  
+- `server.go` — Initializes the listener and manages lifecycle  
+- `client_manager.go` — Tracks and manages connected clients  
+- `handlers.go` — Delegates client message handling  
+- `command/` — Modular command implementations:
+  - `interface.go` — Command interface definition
+  - `list.go`, `quit.go`, `default.go` — Specific command logic
+- `message/message.go` — Defines the `Message` struct and format
+- `Dockerfile` — Containerization instructions
+- `README.md` — Project documentation
 
 ## 🚀 How to Run
+
+### Run locally (no Docker)
 
 1. Clone the repository:
    ```bash
@@ -26,6 +35,26 @@ This project was built to practice client-server networking concepts and to demo
 5. Type /quit to disconnect, or /list to see connected clients.
 6. Press ENTER in the server terminal to gracefully shut down.
 
+## 🐳 Docker Support
+
+This project can also run in a Docker container for easy portability and isolation.
+
+1. Build the Docker image:
+    ```bash
+    docker build -t go-tcp-server .
+    ```
+2. Run the container:
+    ```bash
+    docker run -it -p 3000:3000 go-tcp-server
+    ```
+3. Connect to the server using Telnet (in a separate terminal):
+    ```bash
+    telnet localhost 3000
+    ```
+4. Type a message and press Enter — the server will respond.
+5. Type `/quit` to disconnect, or `/list` to see connected clients.
+6. Press ENTER in the Docker container terminal to gracefully shut down the server.
+
 ## 🛠 Features
 - Accepts multiple simultaneous client connections
 - Reads full messages until newline (\n)
@@ -35,6 +64,7 @@ This project was built to practice client-server networking concepts and to demo
 - Graceful shutdown with sync.WaitGroup (no panics)
 - Uses channels to safely communicate between Goroutines
 - Clean modular structure with Go best practices
+- Can be run inside a Docker container
 
 ## 💬 Example Interaction
 ```ruby
@@ -57,11 +87,13 @@ Hello
 - Goroutines
 - Channels
 - sync.WaitGroup
+- Docker (for containerization)
 
 ## 🎯 Learning Goals
 - Understand TCP server-client architecture
 - Practice concurrency and safe communication in Go
 - Structure Go projects into modular, maintainable files
+- Learn how to containerize and run Go applications using Docker
 
 ## Contributors 👥
 
