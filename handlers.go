@@ -21,13 +21,6 @@ func (s *Server) acceptLoop() {
 				fmt.Println("accept error:", err)
 				continue
 			}
-
-			// // If the listener was closed, exit the loop without printing an error
-			// if errors.Is(err, net.ErrClosed) {
-			// 	return
-			// }
-			// fmt.Println("Accept error:", err)
-			// continue
 		}
 
 		fmt.Println("New connection to the server:", conn.RemoteAddr())

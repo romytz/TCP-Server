@@ -49,8 +49,6 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
-	// defer ln.Close()
-
 	s.ln = ln
 	go s.acceptLoop() // Start accepting client connections in a separate goroutine
 
