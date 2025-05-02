@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -14,12 +13,21 @@ func (s *Server) acceptLoop() {
 	for {
 		conn, err := s.ln.Accept()
 		if err != nil {
-			// If the listener was closed, exit the loop without printing an error
-			if errors.Is(err, net.ErrClosed) {
+			select {
+			case <-s.quitch:
+				// We're shutting down — exit the loop
 				return
+			default:
+				fmt.Println("accept error:", err)
+				continue
 			}
-			fmt.Println("Accept error:", err)
-			continue
+
+			// // If the listener was closed, exit the loop without printing an error
+			// if errors.Is(err, net.ErrClosed) {
+			// 	return
+			// }
+			// fmt.Println("Accept error:", err)
+			// continue
 		}
 
 		fmt.Println("New connection to the server:", conn.RemoteAddr())
@@ -64,6 +72,14 @@ func (s *Server) handleMessage(conn net.Conn, msgBuffer []byte, addr string) boo
 	}
 	return handler.Execute(s, conn, addr, msgBuffer)
 
+}
+
+// consumeMessage listens on the server's message channel (msgch)
+// and logs each received message.
+func (s *Server) consumeMessage() {
+	for msg := range s.msgch {
+		fmt.Printf("Received message from connection (%s): %s\n", msg.From, string(msg.Payload))
+	}
 }
 
 // cleanInput simulates processing of real-time input where backspace characters ('\b') occur.

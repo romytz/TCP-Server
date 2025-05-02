@@ -49,12 +49,16 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
-	defer ln.Close()
+	// defer ln.Close()
 
 	s.ln = ln
 	go s.acceptLoop() // Start accepting client connections in a separate goroutine
 
 	<-s.quitch // Block until shutdown signal is received
+	fmt.Println("Shutdown initiated...")
+
+	s.ln.Close() // Immediately stop accepting new connections
+	fmt.Println("Stopped accepting new clients.")
 
 	fmt.Println("Waiting for all clients to finish...")
 	s.wg.Wait()
