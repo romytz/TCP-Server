@@ -89,12 +89,6 @@ Hello
 - sync.WaitGroup
 - Docker (for containerization)
 
-## 🎯 Learning Goals
-- Understand TCP server-client architecture
-- Practice concurrency and safe communication in Go
-- Structure Go projects into modular, maintainable files
-- Learn how to containerize and run Go applications using Docker
-
 ## Contributors 👥
 
 - **Romy Tzafrir** - [GitHub Profile](https://github.com/romytz)
