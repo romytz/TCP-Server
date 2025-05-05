@@ -4,7 +4,7 @@ A simple TCP server implemented in Go, designed to accept multiple client connec
 
 This project was built to practice client-server networking concepts and to demonstrate Go’s concurrency model using Goroutines, channels, and synchronization primitives like WaitGroups.
 
-## 📦 Project Structure
+## Project Structure
 
 - `main.go` — Entry point; starts the server and handles shutdown  
 - `server.go` — Initializes the listener and manages lifecycle  
@@ -17,7 +17,7 @@ This project was built to practice client-server networking concepts and to demo
 - `Dockerfile` — Containerization instructions
 - `README.md` — Project documentation
 
-## 🚀 How to Run
+## How to Run
 
 ### Run locally (no Docker)
 
@@ -35,7 +35,7 @@ This project was built to practice client-server networking concepts and to demo
 5. Type /quit to disconnect, or /list to see connected clients.
 6. Press ENTER in the server terminal to gracefully shut down.
 
-## 🐳 Docker Support
+## Docker Support
 
 This project can also run in a Docker container for easy portability and isolation.
 
@@ -55,7 +55,7 @@ This project can also run in a Docker container for easy portability and isolati
 5. Type `/quit` to disconnect, or `/list` to see connected clients.
 6. Press ENTER in the Docker container terminal to gracefully shut down the server.
 
-## 🛠 Features
+## Features
 - Accepts multiple simultaneous client connections
 - Reads full messages until newline (\n)
 - Responds to custom commands:
@@ -66,7 +66,7 @@ This project can also run in a Docker container for easy portability and isolati
 - Clean modular structure with Go best practices
 - Can be run inside a Docker container
 
-## 💬 Example Interaction
+## Example Interaction
 ```ruby
 $ telnet localhost 3000
 [Server]: Welcome [::1]:55590!
@@ -81,7 +81,7 @@ Hello
 
 ```
 
-## 📚 Technologies Used
+## Technologies Used
 - Go (Golang)
 - TCP networking (net package)
 - Goroutines
@@ -89,10 +89,10 @@ Hello
 - sync.WaitGroup
 - Docker (for containerization)
 
-## Contributors 👥
+## Contributors
 
 - **Romy Tzafrir** - [GitHub Profile](https://github.com/romytz)
 
-## License 📜
+## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
